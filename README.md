@@ -221,17 +221,14 @@ You can customize the display names of your grid columns by adding a `header_nam
 ```python
 @register(Product)
 class ProductAG(AgGrid):
-    list_display = ("id", "name", "price", "quantity", "category_fk__name")
+    list_display = ("id", "name", "price", "quantity", "category_fk")
     editable = ("price", "quantity")
     sortable = ("name", "price", "quantity")
 
     # Add custom header names
     header_names = {
         "id": "ID",
-        "name": "상품명",  # Korean: "Product Name"
-        "price": "판매가",  # Korean: "Sale Price"
-        "quantity": "재고수량",  # Korean: "Stock Quantity"
-        "category_fk__name": "카테고리"  # Korean: "Category"
+        "category_fk": "카테고리"  # Korean: "Category"
     }
 
     form_fields = {
@@ -354,6 +351,7 @@ The `AgGridFilteredListView` automatically:
 The system maps Django field types to AG Grid types using these mappings:
 
 ```python
+
 FIELD_TYPE_MAP = {
     "AutoField": "number",
     "BigIntegerField": "number",
@@ -380,6 +378,24 @@ FILTER_TYPE_MAP = {
     "DecimalField": "agNumberColumnFilter",
     "DateField": "agDateColumnFilter",
     "DateTimeField": "agDateColumnFilter",
+    "ForeignKey": "",
+    "OneToOneField": "",
+    "ManyToManyField": "",
+}
+
+CELL_RENDERER_MAP = {
+    "BooleanField": "agCheckboxCellRenderer",
+    "DateField": "agDateCellRenderer",
+    "DateTimeField": "agDateCellRenderer",
+    "ForeignKey": "agTextCellRenderer",
+    "OneToOneField": "agTextCellRenderer",
+    "ManyToManyField": "agTextCellRenderer",
+}
+
+CELL_EDITOR_MAP = {
+    "BooleanField": "agCheckboxCellRenderer",
+    "DateField": "agDateCellEditor",
+    "ForeignKey": "agSelectCellEditor",
 }
 ```
 

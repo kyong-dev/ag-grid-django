@@ -78,12 +78,7 @@ class AgGridModelPermission(BasePermission):
         elif request.method == "DELETE":
             permission_codename = f"{app_label}.delete_{model_name.lower()}"
 
-        # Add more detailed logging
-        logger.warning(f"Checking permission: {permission_codename} for user {user}")
-        logger.warning(f"User permissions: {[p for p in user.get_all_permissions()]}")
-
         has_perm = user.has_perm(permission_codename)
-        logger.warning(f"Permission check result for {permission_codename}: {has_perm}")
 
         # Make sure we're actually returning False when permission is denied
         if not has_perm:

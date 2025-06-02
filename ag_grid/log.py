@@ -9,12 +9,13 @@ class GridEditLog(models.Model):
         ("CREATE", "Create"),
         ("UPDATE", "Update"),
         ("DELETE", "Delete"),
+        ("ACTION", "Action"),
     )
 
     timestamp = models.DateTimeField(auto_now_add=True)
     action = models.CharField(max_length=10, choices=ACTION_CHOICES, default="UPDATE")
     model = models.CharField(max_length=100)
-    object_id = models.CharField(max_length=100)
+    object_id = models.CharField(null=True, max_length=100)
     field = models.CharField(max_length=100, blank=True)  # May be blank for CREATE/DELETE operations
     old_value = models.TextField(null=True, blank=True)
     new_value = models.TextField(null=True, blank=True)
@@ -49,3 +50,7 @@ class GridEditLog(models.Model):
     @classmethod
     def log_delete(cls, model_name, object_id, user=None, object_data=None):
         return cls.objects.create(action="DELETE", model=model_name, object_id=object_id, user=user, object_data=object_data)
+
+    @classmethod
+    def log_action(cls, model_name, object_id, user=None, object_data=None):
+        return cls.objects.create(action="ACTION", model=model_name, object_id=object_id, user=user, object_data=object_data)

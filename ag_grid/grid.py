@@ -2,7 +2,9 @@ class AgGrid:
     list_display = None
     editable = []
     sortable = []
-    header_names = {} 
+    left_pinning = []
+    right_pinning = []
+    header_names = {}
     form_fields = {}
 
     @classmethod
@@ -18,13 +20,21 @@ class AgGrid:
         return cls.sortable
 
     @classmethod
+    def get_left_pinning(cls):
+        return cls.left_pinning
+
+    @classmethod
+    def get_right_pinning(cls):
+        return cls.right_pinning
+
+    @classmethod
     def get_header_names(cls):
         return cls.header_names
-    
+
     @classmethod
     def get_form_fields(cls):
         return cls.form_fields
-    
+
     @classmethod
     def get_fk_display_field(cls, field_name):
         """
@@ -32,5 +42,3 @@ class AgGrid:
             return "name"
         """
         return None
-    
-    

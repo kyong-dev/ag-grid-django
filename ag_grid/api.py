@@ -15,7 +15,6 @@ from django.utils.dateparse import parse_date
 from django.utils.encoding import force_str
 from django.utils.translation import gettext_lazy as _
 
-from asgiref.sync import async_to_sync
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 import openpyxl
@@ -32,9 +31,8 @@ from .permissions import AgGridModelPermission
 from .registry import get_config, resource_registry
 
 try:
-    from ag_grid.contrib.notification.models import Notification
+    from ag_grid.contrib.notification.models import AgGridNotification
     from ag_grid.contrib.notification.utils import send_notification
-    from channels.layers import get_channel_layer
 
 except ImportError:
     pass
@@ -478,24 +476,23 @@ class AgGridUpdateAPIView(APIView):
                 )
 
                 # Broadcast the update via WebSockets
-                # channel_layer = get_channel_layer()
-                # room_group_name = f"{app_label}_{model_name}"
-                # async_to_sync(channel_layer.group_send)(
-                #     room_group_name,
-                #     {
-                #         "type": "model_update",
-                #         "data": {
-                #             "id": str(pk),
-                #             "field": field,
-                #             "previousValue": str(old_value),
-                #             "value": value,
-                #             "user_id": request.user.id if request.user.is_authenticated else None,
-                #             "username": request.user.username if request.user.is_authenticated else None,
-                #             "app_label": app_label,
-                #             "model_name": model_name,
-                #         },
-                #     },
-                # )
+                notification_data = {
+                    "id": str(pk),
+                    "field": field,
+                    "previousValue": str(old_value),
+                    "value": value,
+                    "user_id": request.user.id if request.user.is_authenticated else None,
+                    "username": request.user.username if request.user.is_authenticated else None,
+                    "app_label": app_label,
+                    "model_name": model_name,
+                }
+                
+                # Send real-time update notification using the utility function
+                send_notification({
+                    "type": "model_update",
+                    "data": notification_data,
+                    "group": f"{app_label}_{model_name}"
+                })
             instance.save()
             return Response({"success": True, "field": field, "old_value": str(old_value), "new_value": str(value)})
         else:
@@ -1573,7 +1570,7 @@ class AgGridExcelExportAPIView(APIView):
 
                 if request.user.is_authenticated:
                     # Create notification
-                    notification = Notification.create_export_notification(user=request.user, filename=force_str(filename), file_url=force_str(download_url))
+                    notification = AgGridNotification.create_export_notification(user=request.user, filename=force_str(filename), file_url=force_str(download_url))
 
                     # Send real-time notification
                     send_notification(notification)

@@ -32,6 +32,7 @@ pip install ag-grid-django
 INSTALLED_APPS = [
     # ...
     'ag_grid',
+    'ag_grid.contirb.notification', # optional, if realtime notification is used
     # ...
 ]
 ```
@@ -42,6 +43,9 @@ INSTALLED_APPS = [
 pip install djangorestframework
 pip install drf-yasg  # For Swagger documentation
 ```
+
+- openpyxl - export
+- channels - socket notification
 
 ## Basic Configuration
 
@@ -60,6 +64,8 @@ class YourModelAG(AgGrid):
     list_display = ('id', 'field1', 'field2', 'related_model__field')
     editable = ('field1', 'field2')
     sortable = ('field1', 'field2')
+    left_pinning = ('id', 'field1')
+    right_pinning = ('related_model__field',)
 
     # Optional: Configure form fields for adding/editing
     form_fields = {
@@ -83,9 +89,17 @@ class YourModelAG(AgGrid):
     @classmethod
     def get_queryset(cls, model):
         return model.objects.select_related('related_model')
+
+
+    @classmethod
+    def get_fk_display_field(cls, field_name):
+        """Return the field to use for display in foreign key dropdowns"""
+        if field_name == "category_fk":
+            return "name"  # Use the 'name' field from Category model
+        return None  # Default fallback
 ```
 
-### Ensure app configuration loads your AG Grid settings
+### Ensure app configuration loads your AG Grid settings for customization
 
 ```python
 # yourapp/apps.py
@@ -155,6 +169,10 @@ Custom headers are particularly useful for:
 - Using more user-friendly column names in the grid
 - Providing localized or translated headers
 - Simplifying complex field names, especially for related fields
+
+### Automatic Model Configuration
+
+If a model is not registered with AG Grid, the system will automatically generate and send results based on the order of columns defined in the model. This provides a convenient fallback that allows basic functionality without explicit configuration.
 
 ## URL Configuration
 

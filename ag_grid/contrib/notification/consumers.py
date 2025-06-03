@@ -6,7 +6,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 
-class NotificationConsumer(AsyncWebsocketConsumer):
+class AgGridNotificationConsumer(AsyncWebsocketConsumer):
     """
     WebSocket consumer for real-time notifications
 
@@ -71,25 +71,25 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def mark_notification_as_read(self, notification_id):
         """Database operation to mark notification as read"""
-        from .models import Notification
+        from .models import AgGridNotification
 
         try:
-            notification = Notification.objects.get(id=notification_id)
+            notification = AgGridNotification.objects.get(id=notification_id)
             # Verify user has permission to mark this notification
             if notification.target_type == "all_staff" or notification.user_id == self.user.id:
                 notification.mark_as_read()
                 return True
             return False
-        except Notification.DoesNotExist:
+        except AgGridNotification.DoesNotExist:
             return False
 
     @database_sync_to_async
     def get_unread_notifications(self):
         """Fetch unread notifications for this user"""
-        from .models import Notification
+        from .models import AgGridNotification
 
         # Get both user-specific and all-staff notifications
-        notifications = Notification.objects.filter(Q(user=self.user, target_type="specific_user") | Q(target_type="all_staff")).filter(is_read=False).order_by("-created_at")[:10]
+        notifications = AgGridNotification.objects.filter(Q(user=self.user, target_type="specific_user") | Q(target_type="all_staff")).filter(is_read=False).order_by("-created_at")[:10]
 
         # Convert to serializable format
         return [{"id": n.id, "type": n.type, "title": n.title, "message": n.message, "action_url": n.action_url, "file_url": n.file_url, "created_at": n.created_at.isoformat()} for n in notifications]

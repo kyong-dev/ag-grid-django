@@ -13,6 +13,8 @@ def send_notification_to_user(user_id, notification_data):
         notification_data: Dictionary containing notification details
     """
     channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
     async_to_sync(channel_layer.group_send)(f"user_{user_id}_notifications", {"type": "notification", "notification": notification_data})
 
 
@@ -24,6 +26,8 @@ def send_notification_to_all_staff(notification_data):
         notification_data: Dictionary containing notification details
     """
     channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
     async_to_sync(channel_layer.group_send)("all_staff_notifications", {"type": "notification", "notification": notification_data})
 
 

@@ -8,10 +8,10 @@ websocket_urlpatterns = [
 ]
 
 try:
-    from ag_grid.contrib.notification.consumers import NotificationConsumer
+    from ag_grid.contrib.notification.consumers import AgGridNotificationConsumer
 
     websocket_urlpatterns += [
-        re_path(r"ws/notifications/$", NotificationConsumer.as_asgi()),
+        re_path(r"ws/notifications/$", AgGridNotificationConsumer.as_asgi()),
     ]
 except ImportError:
     pass

@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
-class Notification(models.Model):
+class AgGridNotification(models.Model):
     """
     Store notification data for admin users
 
@@ -35,6 +35,7 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        db_table = "ag_grid_notification"
         verbose_name = _("Notification")
         verbose_name_plural = _("Notifications")
         indexes = [

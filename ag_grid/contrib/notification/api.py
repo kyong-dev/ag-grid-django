@@ -11,13 +11,13 @@ from rest_framework.views import APIView
 
 from ag_grid.permissions import AgGridModelPermission
 
-from .models import Notification
+from .models import AgGridNotification
 from .utils import send_notification
 
 User = get_user_model()
 
 
-class NotificationListAPIView(APIView):
+class AgGridNotificationListAPIView(APIView):
     """API to get user's notifications"""
 
     # permission_classes = [AgGridModelPermission]
@@ -55,7 +55,7 @@ class NotificationListAPIView(APIView):
         limit = int(request.query_params.get("limit", 50))
 
         # Filter for user's notifications (personal + staff-wide)
-        notifications = Notification.objects.filter(Q(user=user, target_type="specific_user") | Q(target_type="all_staff")).exclude(is_read=True).order_by("-created_at")[:limit]
+        notifications = AgGridNotification.objects.filter(Q(user=user, target_type="specific_user") | Q(target_type="all_staff")).exclude(is_read=True).order_by("-created_at")[:limit]
 
         # Serialize for API response
         data = [
@@ -66,7 +66,7 @@ class NotificationListAPIView(APIView):
         return Response(data)
 
 
-class NotificationMarkReadAPIView(APIView):
+class AgGridNotificationMarkReadAPIView(APIView):
     """API to mark notification as read"""
 
     # permission_classes = [AgGridModelPermission]
@@ -83,7 +83,7 @@ class NotificationMarkReadAPIView(APIView):
     def post(self, request, pk):
         """Mark notification as read"""
         try:
-            notification = Notification.objects.get(pk=pk)
+            notification = AgGridNotification.objects.get(pk=pk)
 
             # Security: only allow marking if user has access to this notification
             if notification.target_type == "all_staff" or (notification.target_type == "specific_user" and notification.user == request.user):
@@ -92,11 +92,11 @@ class NotificationMarkReadAPIView(APIView):
 
             return Response({"error": "You do not have permission to mark this notification as read"}, status=status.HTTP_403_FORBIDDEN)
 
-        except Notification.DoesNotExist:
+        except AgGridNotification.DoesNotExist:
             return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
-class SendNotificationAPIView(APIView):
+class SendAgGridNotificationAPIView(APIView):
     """API to create and send a new notification"""
 
     permission_classes = [AllowAny]
@@ -142,7 +142,7 @@ class SendNotificationAPIView(APIView):
                     return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create notification
-        notification = Notification.objects.create(
+        notification = AgGridNotification.objects.create(
             type=data.get("type", "custom"), target_type=target_type, user=user, title=data.get("title"), message=data.get("message"), action_url=data.get("action_url"), file_url=data.get("file_url")
         )
 

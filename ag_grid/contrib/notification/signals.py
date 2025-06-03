@@ -1,9 +1,8 @@
-from django.apps import apps
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import Notification
+from .models import AgGridNotification
 from .utils import send_notification
 
 # Optional: Set up signal to monitor product inventory levels
@@ -28,5 +27,5 @@ if "product" in settings.INSTALLED_APPS:
                 send_notification = True
 
         if send_notification:
-            notification = Notification.create_low_stock_notification(instance)
+            notification = AgGridNotification.create_low_stock_notification(instance)
             send_notification(notification)

@@ -1,10 +1,10 @@
 from django.contrib import admin
 
-from .models import Notification
+from .models import AgGridNotification
 
 
-@admin.register(Notification)
-class NotificationAdmin(admin.ModelAdmin):
+@admin.register(AgGridNotification)
+class AgGridNotificationAdmin(admin.ModelAdmin):
     """Admin interface for notifications"""
 
     list_display = ("title", "type", "target_type", "user", "is_read", "created_at")

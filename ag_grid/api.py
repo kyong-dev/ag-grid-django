@@ -32,7 +32,7 @@ from .registry import get_config, resource_registry
 
 try:
     from ag_grid.contrib.notification.models import AgGridNotification
-    from ag_grid.contrib.notification.utils import send_notification
+    from ag_grid.contrib.notification.utils import send_notification, send_model_notification
 
 except ImportError:
     pass
@@ -221,6 +221,8 @@ class AgGridHeaderAPIView(APIView):
                             "type": field_type,
                             "filter": filter_type,
                             "cellRenderer": cell_renderer,
+                            "enableCellTextSelection": True if field_type == "text" else False,
+                            "cellStyle": { 'backgroundColor': '#f0f7ff' } if editable else {},
                         })
                 
                 return Response(headers)
@@ -297,6 +299,9 @@ class AgGridHeaderAPIView(APIView):
                             "cellRenderer": cell_renderer,
                             "cellEditor": cell_editor_type,
                             "cellEditorParams": cell_editor_params,
+                            "enableCellTextSelection": True if field_type == "text" else False,
+                            "ensureDomOrder": True if field_type == "text" else False,
+                            "cellStyle": { 'backgroundColor': '#f0f7ff' } if field.name in config.get_editable_fields() else {},
                         }
                     )
 
@@ -339,6 +344,9 @@ class AgGridHeaderAPIView(APIView):
                                         "cellRenderer": CELL_RENDERER_MAP.get(internal_type, "agTextCellRenderer"),
                                         "cellEditor": CELL_EDITOR_MAP.get(internal_type, "agTextCellEditor"),
                                         "cellEditorParams": CELL_EDITOR_PARAM_MAP.get(internal_type, {}),
+                                        "enableCellTextSelection": True if field_type == "text" else False,
+                                        "ensureDomOrder": True if field_type == "text" else False,
+                                        "cellStyle": { 'backgroundColor': '#f0f7ff' } if field_name in config.get_editable_fields() else {},
                                     }
                                 )
                             except:
@@ -354,6 +362,9 @@ class AgGridHeaderAPIView(APIView):
                                         "cellRenderer": "agTextCellRenderer",
                                         "cellEditor": "agTextCellEditor",
                                         "cellEditorParams": {},
+                                        "enableCellTextSelection": True if field_type == "text" else False,
+                                        "ensureDomOrder": True if field_type == "text" else False,
+                                        "cellStyle": { 'backgroundColor': '#f0f7ff' } if field_name in config.get_editable_fields() else {},
                                     }
                                 )
             print(f"Headers for {app_label}.{model_name}: {headers}")
@@ -486,13 +497,16 @@ class AgGridUpdateAPIView(APIView):
                     "app_label": app_label,
                     "model_name": model_name,
                 }
-                
+
                 # Send real-time update notification using the utility function
-                send_notification({
-                    "type": "model_update",
-                    "data": notification_data,
-                    "group": f"{app_label}_{model_name}"
-                })
+                try:
+                    send_model_notification({
+                        "type": "model_update",
+                        "data": notification_data,
+                        "group": f"{app_label}_{model_name}"
+                    })
+                except Exception as e:
+                    print(f"Error sending notification: {e}")
             instance.save()
             return Response({"success": True, "field": field, "old_value": str(old_value), "new_value": str(value)})
         else:

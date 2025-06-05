@@ -44,8 +44,9 @@ pip install djangorestframework
 pip install drf-yasg  # For Swagger documentation
 ```
 
-- openpyxl - export
-- channels - socket notification
+- openpyxl - excel export
+- daphne
+- channels, channels_redis - socket notification
 
 ## Basic Configuration
 
@@ -206,6 +207,8 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
+
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 ```
 
 ### 3. Assign permissions to users

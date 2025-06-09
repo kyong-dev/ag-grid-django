@@ -23,10 +23,47 @@ class ModelConsumer(AsyncWebsocketConsumer):
         self.app_label = self.scope["url_route"]["kwargs"]["app_label"]
         self.model_name = self.scope["url_route"]["kwargs"]["model_name"]
 
-        # Set user information
-        self.user = self.scope.get("user")
-        self.user_id = str(self.user.id) if self.user and self.user.is_authenticated else None
-        self.username = self.user.username if self.user and self.user.is_authenticated else None
+        query_string = self.scope.get("query_string", b"").decode()
+        query_params = dict(x.split("=") for x in query_string.split("&") if x)
+        token = query_params.get("token")
+
+        # Authenticate user based on token or session
+        if token:
+            from rest_framework_simplejwt.tokens import UntypedToken
+            from django.contrib.auth.models import AnonymousUser
+            from django.contrib.auth import get_user_model
+            
+            User = get_user_model()
+            
+            try:
+                UntypedToken(token)
+                
+                from jwt import decode as jwt_decode
+                from django.conf import settings
+                
+                decoded_data = jwt_decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+                user_id = decoded_data.get('username')
+
+                if user_id:
+                    self.user = await database_sync_to_async(User.objects.get)(id=user_id)
+                    self.user_id = str(self.user.id)
+                    self.username = self.user.username
+                else:
+                    self.user = AnonymousUser()
+                    self.user_id = None
+                    self.username = None
+                    
+            except Exception as e:
+                print(f"Token authentication error: {str(e)}")
+                self.user = AnonymousUser()
+                self.user_id = None
+                self.username = None
+        
+        else:
+            # Use Django's session authentication
+            self.user = self.scope.get("user")
+            self.user_id = str(self.user.id) if self.user and self.user.is_authenticated else None
+            self.username = self.user.username if self.user and self.user.is_authenticated else None
 
         # Verify model exists
         try:

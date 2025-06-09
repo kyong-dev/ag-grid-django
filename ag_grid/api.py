@@ -500,6 +500,7 @@ class AgGridUpdateAPIView(APIView):
 
                 # Send real-time update notification using the utility function
                 try:
+                    instance.save()
                     send_model_notification({
                         "type": "model_update",
                         "data": notification_data,
@@ -507,6 +508,8 @@ class AgGridUpdateAPIView(APIView):
                     })
                 except Exception as e:
                     print(f"Error sending notification: {e}")
+                    return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                
             instance.save()
             return Response({"success": True, "field": field, "old_value": str(old_value), "new_value": str(value)})
         else:

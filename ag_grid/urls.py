@@ -13,6 +13,16 @@ urlpatterns = [
     path("<str:app_label>/<str:model_name>/form-fields/", api.AgGridFormFieldsAPIView.as_view(), name="form-fields"),
     path("<str:app_label>/<str:model_name>/filtered-data-source/", api.AgGridFilteredListView.as_view(), name="filtered-data-source"),
     path("<str:app_label>/<str:model_name>/excel-export/", api.AgGridExcelExportAPIView.as_view(), name="list"),
+    path(
+        "<str:app_label>/<str:model_name>/foreign-options/<str:field_name>/",
+        api.AgGridFormForeignKeyOptionsAPIView.as_view(),
+        name="ag_grid_foreign_key_options"
+    ),
+    path(
+        "<str:app_label>/<str:model_name>/form-create/",
+        api.AgGridFormCreateAPIView.as_view(),
+        name='ag_grid_form_create'
+    ),
 ]
 
 try:

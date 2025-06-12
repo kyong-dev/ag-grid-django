@@ -277,11 +277,17 @@ class AgGridHeaderAPIView(APIView):
                                 values.extend([str(getattr(obj, display_field)) for obj in objects])
                                 # Set cell editor params with these values
                                 cell_editor_params = {"values": values}
+                            else:
+                                # Fallback to using IDs if no display field is specified
+                                related_model = field.related_model
+                                values = [None] if field.null else []
+                                values.extend([str(obj.id) for obj in related_model.objects.all()])
+                                cell_editor_params = {"values": values}
                         else:
                             # Default behavior - get IDs from related model
                             related_model = field.related_model
                             values = [None] if field.null else []
-                            values.extend([str(obj.pk) for obj in related_model.objects.all()])
+                            values.extend([str(obj.id) for obj in related_model.objects.all()])
                             cell_editor_params = {"values": values}
 
                         cell_renderer = "agTextCellRenderer"
@@ -768,6 +774,314 @@ class AgGridFormFieldsAPIView(APIView):
 
         return Response({"fields": fields_list, "model_info": model_info})
 
+class AgGridFormForeignKeyOptionsAPIView(APIView):
+    """
+    API view for getting options for foreign key fields in a model
+    """
+
+    permission_classes = [AgGridModelPermission]
+
+    @swagger_auto_schema(
+        operation_description=_("Get options for foreign key fields in a model"),
+        operation_summary=_("Get Foreign Key Options"),
+        responses={
+            200: openapi.Response(
+                description="Foreign key options",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "options": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_OBJECT, properties={"id": openapi.Schema(type=openapi.TYPE_INTEGER), "name": openapi.Schema(type=openapi.TYPE_STRING)}),
+                        )
+                    },
+                ),
+            ),
+            404: openapi.Response(description="Model or field not found", schema=openapi.Schema(type=openapi.TYPE_OBJECT, properties={"error": openapi.Schema(type=openapi.TYPE_STRING)})),
+        },
+        tags=[_("AgGrid")],
+    )
+    def get(self, request, app_label, model_name, field_name):
+        """
+        Get options for a foreign key field in a model
+        """
+        try:
+            model = apps.get_model(app_label, model_name)
+            field = model._meta.get_field(field_name)
+        except LookupError:
+            return Response({"error": "Model not found"}, status=status.HTTP_404_NOT_FOUND)
+        except model.DoesNotExist:
+            return Response({"error": "Field not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if field.get_internal_type() not in ["ForeignKey", "OneToOneField"]:
+            return Response({"error": f"Field '{field_name}' is not a foreign key"}, status=status.HTTP_400_BAD_REQUEST)
+
+        related_model = field.related_model
+        config = get_config(model)
+        
+        # Get all objects from the related model
+        options = []
+        
+        # Check if config has form_fields with options configuration
+        display_field = None
+        if not config:
+            return Response({"error": "Grid configuration not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if not hasattr(config, 'form_fields'):
+            return Response({"error": "form_fields configuration not found in grid config"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if field_name not in config.form_fields:
+            return Response({"error": f"Field '{field_name}' not found in form_fields configuration"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        field_config = config.form_fields[field_name]
+        if not isinstance(field_config, dict) or 'options' not in field_config:
+            return Response({"error": f"'options' configuration not found for field '{field_name}'"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        options_config = field_config['options']
+        if not isinstance(options_config, dict) or 'key' not in options_config:
+            return Response({"error": f"'key' not specified in options configuration for field '{field_name}'"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        display_field = options_config['key']
+        
+        # Validate that the display field exists in the related model
+        try:
+            related_model._meta.get_field(display_field)
+        except:
+            return Response({"error": f"Display field '{display_field}' not found in related model '{related_model.__name__}'"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        for obj in related_model.objects.all():
+            if hasattr(obj, display_field):
+                # Use the specified display field
+                display_value = getattr(obj, display_field)
+            else:
+                return Response({"error": f"Display field '{display_field}' not accessible on object"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            option_data = {
+                "id": obj.pk,
+                "name": display_value,
+            }
+            options.append(option_data)
+
+        return Response({"options": options})
+        # """
+        # Get options for a foreign key field in a model
+        # """
+        # try:
+        #     model = apps.get_model(app_label, model_name)
+        #     field = model._meta.get_field(field_name)
+        # except LookupError:
+        #     return Response({"error": "Model not found"}, status=status.HTTP_404_NOT_FOUND)
+        # except model.DoesNotExist:
+        #     return Response({"error": "Field not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # if field.get_internal_type() not in ["ForeignKey", "OneToOneField"]:
+        #     return Response({"error": f"Field '{field_name}' is not a foreign key"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # related_model = field.related_model
+        # config = get_config(model)
+        
+        # # Get all objects from the related model
+        # options = []
+        
+        # # Check if config has form_fields with options configuration
+        # display_field = None
+        # if config and hasattr(config, 'form_fields') and field_name in config.form_fields:
+        #     field_config = config.form_fields[field_name]
+        #     if isinstance(field_config, dict) and 'options' in field_config:
+        #         options_config = field_config['options']
+        #         if isinstance(options_config, dict) and 'key' in options_config:
+        #             display_field = options_config['key']
+        
+        # # If no display field specified in form_fields, check for get_fk_display_field method
+        # if not display_field and config and hasattr(config, "get_fk_display_field") and callable(config.get_fk_display_field):
+        #     display_field = config.get_fk_display_field(field_name)
+        
+        # for obj in related_model.objects.all():
+        #     if display_field and hasattr(obj, display_field):
+        #         # Use the specified display field
+        #         display_value = getattr(obj, display_field)
+        #     else:
+        #         # Fallback to string representation
+        #         display_value = str(obj)
+                
+        #     option_data = {
+        #         "id": obj.pk,
+        #         "name": display_value,
+        #     }
+        #     options.append(option_data)
+
+        # return Response({"options": options})
+
+class AgGridFormCreateAPIView(APIView):
+    
+    permission_classes = [AgGridModelPermission]
+
+    @swagger_auto_schema(
+        operation_description=_("Create a new model instance using form fields configuration"),
+        operation_summary=_("Create Model Instance"),
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            description="Form data based on form_fields configuration",
+            additional_properties=True,
+        ),
+        responses={
+            201: openapi.Response(
+                description="Model instance created successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "success": openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        "message": openapi.Schema(type=openapi.TYPE_STRING),
+                        "data": openapi.Schema(type=openapi.TYPE_OBJECT),
+                        "id": openapi.Schema(type=openapi.TYPE_INTEGER),
+                    },
+                ),
+            ),
+            400: openapi.Response(
+                description="Validation error",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "success": openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        "error": openapi.Schema(type=openapi.TYPE_STRING),
+                        "errors": openapi.Schema(type=openapi.TYPE_OBJECT),
+                    }
+                )
+            ),
+            404: openapi.Response(description="Model not found", schema=openapi.Schema(type=openapi.TYPE_OBJECT, properties={"error": openapi.Schema(type=openapi.TYPE_STRING)})),
+        },
+        tags=[_("AgGrid")],
+    )
+    def post(self, request, app_label, model_name):
+        """
+        Create a new model instance using form_fields configuration
+        """
+        try:
+            model = apps.get_model(app_label, model_name)
+        except LookupError:
+            return Response({"error": "Model not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        config = get_config(model)
+        if not config:
+            return Response({"error": "Grid configuration not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if not hasattr(config, 'form_fields'):
+            return Response({"error": "form_fields configuration not found in grid config"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate and process form data
+        print(f"Request body: {request.body}")
+        form_data = json.loads(request.body)
+        validated_data = {}
+        errors = {}
+
+        for field_name, field_config in config.form_fields.items():
+            if not isinstance(field_config, dict):
+                continue
+
+            field_value = form_data[field_name]
+            
+            # Check required fields
+            if field_config.get('required', False) and (field_value is None or field_value == ''):
+                errors[field_name] = f"{field_config.get('label', field_name)} is required"
+                continue
+
+            # Skip validation if field is empty and not required
+            if field_value is None or field_value == '':
+                continue
+
+            # Validate field based on type
+            field_type = field_config.get('type', 'text')
+            
+            try:
+                if field_type == 'select':
+                    # Handle foreign key fields
+                    django_field = model._meta.get_field(field_name)
+                    if django_field.get_internal_type() in ["ForeignKey", "OneToOneField"]:
+                        # Validate that the foreign key object exists
+                        related_model = django_field.related_model
+                        try:
+                            related_obj = related_model.objects.get(pk=field_value)
+                            validated_data[field_name] = related_obj
+                        except related_model.DoesNotExist:
+                            errors[field_name] = f"Invalid {field_config.get('label', field_name)} selection"
+                    else:
+                        validated_data[field_name] = int(field_value)
+                
+                elif field_type == 'text':
+                    # Handle text fields with validation
+                    validation = field_config.get('validation', {})
+                    
+                    # Check minimum length
+                    min_length = validation.get('minLength', {})
+                    if min_length and len(str(field_value)) < min_length.get('value', 0):
+                        errors[field_name] = min_length.get('message', f"{field_config.get('label', field_name)} is too short")
+                        continue
+                    
+                    # Check maximum length
+                    max_length = validation.get('maxLength', {})
+                    if max_length and len(str(field_value)) > max_length.get('value', 1000):
+                        errors[field_name] = max_length.get('message', f"{field_config.get('label', field_name)} is too long")
+                        continue
+                    
+                    validated_data[field_name] = str(field_value)
+                
+                elif field_type == 'number':
+                    # Handle number fields
+                    try:
+                        validated_data[field_name] = float(field_value) if '.' in str(field_value) else int(field_value)
+                    except (ValueError, TypeError):
+                        errors[field_name] = f"{field_config.get('label', field_name)} must be a valid number"
+                
+                elif field_type == 'boolean':
+                    # Handle boolean fields
+                    validated_data[field_name] = bool(field_value)
+                
+                else:
+                    # Default handling
+                    validated_data[field_name] = field_value
+                    
+            except Exception as e:
+                errors[field_name] = f"Error processing {field_config.get('label', field_name)}: {str(e)}"
+
+        # Return validation errors if any
+        if errors:
+            return Response({
+                "success": False,
+                "error": "Validation failed",
+                "errors": errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create the model instance
+        try:
+            instance = model.objects.create(**validated_data)
+            
+            # Prepare response data
+            response_data = {}
+            for field_name in config.form_fields.keys():
+                if hasattr(instance, field_name):
+                    field_value = getattr(instance, field_name)
+                    # Handle foreign key fields
+                    if hasattr(field_value, 'pk'):
+                        response_data[field_name] = {
+                            "id": field_value.pk,
+                            "name": str(field_value)
+                        }
+                    else:
+                        response_data[field_name] = field_value
+
+            return Response({
+                "success": True,
+                "message": f"{model.__name__} created successfully",
+                "data": response_data,
+                "id": instance.pk
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                "success": False,
+                "error": f"Failed to create {model.__name__}: {str(e)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
 
 class AgGridFilteredListView(APIView):
     """
@@ -780,6 +1094,7 @@ class AgGridFilteredListView(APIView):
     - Support for annotations and calculated fields
     - Query optimization with select_related
     """
+    permission_classes = [AgGridModelPermission]
 
     app_label = None
     model_name = None

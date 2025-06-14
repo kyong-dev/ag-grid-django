@@ -241,7 +241,6 @@ In Django Admin, assign the appropriate permissions to your users:
 
 The following endpoints are available for each registered model:
 
-- `POST /api/ag-grid/{app_label}/{model_name}/create/` - Create Model Instance
 - `POST /api/ag-grid/{app_label}/{model_name}/excel-export/` - Export AG Grid Data to Excel
 - `GET /api/ag-grid/{app_label}/{model_name}/filtered-data-source/` - Get AG Grid Filtered List
 - `GET /api/ag-grid/{app_label}/{model_name}/foreign-options/{field_name}/` - Get Foreign Key Options

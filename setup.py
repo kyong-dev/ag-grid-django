@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ag-grid-django',
-    version='0.0.7.5',
+    version='0.0.7.7',
     description='A Django app that integrates AG Grid for advanced data grid functionalities',
     author='kyong',
     author_email='kyong.dev@gmail.com',

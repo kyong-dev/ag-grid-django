@@ -549,79 +549,6 @@ def _get_form_field_type(field):
         return "text"
 
 
-class AgGridCreateAPIView(APIView):
-    """
-    API view for creating a new model instance
-    """
-
-    permission_classes = [AgGridModelPermission]
-
-    @swagger_auto_schema(
-        operation_description=_("Create a new model instance"),
-        operation_summary=_("Create Model Instance"),
-        request_body=openapi.Schema(type=openapi.TYPE_OBJECT, description="Form data for creating a new instance", additional_properties=openapi.Schema(type=openapi.TYPE_STRING)),
-        responses={
-            201: openapi.Response(
-                description="Object created successfully",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "success": openapi.Schema(type=openapi.TYPE_BOOLEAN, default=True),
-                        "id": openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of the created object"),
-                        "message": openapi.Schema(type=openapi.TYPE_STRING),
-                    },
-                ),
-            ),
-            400: openapi.Response(
-                description="Invalid data provided",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "error": openapi.Schema(type=openapi.TYPE_STRING),
-                        "field_errors": openapi.Schema(type=openapi.TYPE_OBJECT, additional_properties=openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_STRING))),
-                    },
-                ),
-            ),
-            404: openapi.Response(description="Model not found", schema=openapi.Schema(type=openapi.TYPE_OBJECT, properties={"error": openapi.Schema(type=openapi.TYPE_STRING)})),
-        },
-        tags=[_("AgGrid")],
-    )
-    def post(self, request, app_label, model_name):
-        """
-        Create a new model instance with the provided data
-        """
-        try:
-            model = apps.get_model(app_label, model_name)
-            config = get_config(model)
-        except LookupError:
-            return Response({"error": "Model not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        if not config:
-            return Response({"error": "Grid config not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Create a new instance with the provided data
-        try:
-            # Start with an empty instance
-            instance = model()
-
-            # Set fields from the request data
-            for field_name, field_value in request.data.items():
-                if hasattr(instance, field_name) and field_name != "id":
-                    setattr(instance, field_name, field_value)
-
-            # Save the instance
-            instance.save()
-
-            # Log the creation
-            object_data = {field: str(getattr(instance, field)) for field in request.data.keys() if hasattr(instance, field)}
-            GridEditLog.log_create(model_name=f"{app_label}.{model_name}", object_id=str(instance.pk), user=request.user if request.user.is_authenticated else None, object_data=object_data)
-
-            return Response({"success": True, "id": instance.pk, "message": f"{model_name} created successfully"}, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response({"error": f"Failed to create {model_name}", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
 class AgGridDeleteAPIView(APIView):
     """
     API view for deleting a model instance
@@ -1055,13 +982,14 @@ class AgGridFormCreateAPIView(APIView):
             instance = model.objects.create(**validated_data)
             
             # Log the creation
+            object_data = {field: str(getattr(instance, field)) for field in request.data.keys() if hasattr(instance, field)}
             GridEditLog.log_create(
                 model_name=f"{app_label}.{model_name}",
                 object_id=str(instance.pk),
                 user=request.user if request.user.is_authenticated else None,
-                object_data=validated_data
+                object_data=object_data
             )
-            
+
             # Prepare response data
             response_data = {}
             for field_name in config.form_fields.keys():

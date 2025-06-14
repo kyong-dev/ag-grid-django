@@ -14,7 +14,10 @@ This README provides a comprehensive guide on integrating AG Grid with your Djan
   - Custom Headers
   - Filtered List Views
   - Custom Field Types
+  - Custom Creation / Edition Form
   - Change Logging
+  - Realtime Socket Data Transfer
+  - Asynchronized Excel Export & Notification
 - Troubleshooting
 
 ## Installation
@@ -74,6 +77,7 @@ class YourModelAG(AgGrid):
             "type": "text",
             "label": "Field One",
             "required": True,
+            "editable": False,
             "placeholder": "Enter field one",
             "validation": {"required": "This field is required"}
         },
@@ -81,8 +85,19 @@ class YourModelAG(AgGrid):
             "type": "number",
             "label": "Field Two",
             "required": True,
+            "editable": True,
             "validation": {"min": {"value": 0, "message": "Must be positive"}}
         },
+        "field3": {
+            "type": "select",
+            "label": "Field Three",
+            "required": True,
+            "editable": True,
+            "placeholder": "Select Field Three",
+            "options": {"url": "/api/ag-grid/{app_label}/{model_name}/foreign-options/influencer/", "key": "nickname"},
+            "validation": {"required": "Influencer is required"},
+
+        }
         # Add more fields as needed
     }
 
@@ -226,12 +241,21 @@ In Django Admin, assign the appropriate permissions to your users:
 
 The following endpoints are available for each registered model:
 
-1. `GET /api/ag-grid/{app_label}/{model_name}/headers/` - Get grid headers
-2. `GET /api/ag-grid/{app_label}/{model_name}/form-fields/` - Get form field configuration
-3. `PATCH /api/ag-grid/{app_label}/{model_name}/{id}/update/` - Update a field
-4. `POST /api/ag-grid/{app_label}/{model_name}/create/` - Create a new instance
-5. `DELETE /api/ag-grid/{app_label}/{model_name}/{id}/delete/` - Delete an instance
-6. `GET /api/ag-grid/{app_label}/{model_name}/filtered-data-source/` - Get default data source
+- `POST /api/ag-grid/{app_label}/{model_name}/create/` - Create Model Instance
+- `POST /api/ag-grid/{app_label}/{model_name}/excel-export/` - Export AG Grid Data to Excel
+- `GET /api/ag-grid/{app_label}/{model_name}/filtered-data-source/` - Get AG Grid Filtered List
+- `GET /api/ag-grid/{app_label}/{model_name}/foreign-options/{field_name}/` - Get Foreign Key Options
+- `POST /api/ag-grid/{app_label}/{model_name}/form-create/` - Create Model Instance
+- `GET /api/ag-grid/{app_label}/{model_name}/form-fields/` - Get Form Field Requirements
+- `GET /api/ag-grid/{app_label}/{model_name}/list-headers/` - Get AgGrid Headers
+- `DELETE /api/ag-grid/{app_label}/{model_name}/{id}/delete/` - Delete Model Instance
+- `PATCH /api/ag-grid/{app_label}/{model_name}/{id}/update/` - Update Model Field
+
+### Notification Endpoints
+
+- `GET /api/ag-grid/notifications/` - Get notifications for current users
+- `POST /api/ag-grid/notifications/send-notification/` - Send a new notification
+- `POST /api/ag-grid/notifications/{id}/mark-read/` - Mark notification as read
 
 ## Advanced Configuration
 
@@ -252,11 +276,17 @@ class ProductAG(AgGrid):
         "category_fk": "카테고리"  # Korean: "Category"
     }
 
+    left_pinning = (
+        "id",
+        "name",
+    )
+
     form_fields = {
         "name": {
             "type": "text",
             "label": "Product Name",
             "required": True,
+            "editable": True,
             "placeholder": "Enter product name",
             "validation": {"required": "Product name is required", "minLength": {"value": 3, "message": "Name must be at least 3 characters"}},
         },
@@ -264,14 +294,16 @@ class ProductAG(AgGrid):
             "type": "select",
             "label": "Category",
             "required": True,
+            "editable": True,
             "placeholder": "Select a category",
             "validation": {"required": "Category is required"},
-            "options_endpoint": "/api/categories/",  # Endpoint to get options
+            "options": {"url": "/api/ag-grid/product/Product/foreign-options/category/", "key": "title"},
         },
         "price": {
             "type": "number",
             "label": "Price",
             "required": True,
+            "editable": True,
             "placeholder": "0.00",
             "validation": {"required": "Price is required", "min": {"value": 0, "message": "Price must be positive"}},
         },
@@ -279,6 +311,7 @@ class ProductAG(AgGrid):
             "type": "number",
             "label": "Quantity",
             "required": True,
+            "editable": True,
             "placeholder": "0",
             "validation": {"required": "Quantity is required", "min": {"value": 0, "message": "Quantity must be positive"}, "pattern": {"value": "^[0-9]+$", "message": "Must be a whole number"}},
         },
@@ -427,6 +460,7 @@ The system automatically logs all changes to a `GridEditLog` model:
 - Creation of records
 - Updates to field values
 - Deletion of records
+- Excel exports
 
 This provides an audit trail of all changes made through the AG Grid interface.
 

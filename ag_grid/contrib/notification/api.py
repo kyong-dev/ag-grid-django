@@ -22,8 +22,8 @@ class AgGridNotificationListAPIView(APIView):
 
     # permission_classes = [AgGridModelPermission]
     @swagger_auto_schema(
-        operation_description="Retrieve notifications for the current user",
-        operation_summary="Get notifications for current user",
+        operation_description="Retrieve notifications for the current userss",
+        operation_summary="Get notifications for current users",
         responses={
             200: openapi.Response(
                 description="List of notifications",

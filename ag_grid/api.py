@@ -969,7 +969,6 @@ class AgGridFormCreateAPIView(APIView):
             return Response({"error": "form_fields configuration not found in grid config"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validate and process form data
-        print(f"Request body: {request.body}")
         form_data = json.loads(request.body)
         validated_data = {}
         errors = {}
@@ -1054,6 +1053,14 @@ class AgGridFormCreateAPIView(APIView):
         # Create the model instance
         try:
             instance = model.objects.create(**validated_data)
+            
+            # Log the creation
+            GridEditLog.log_create(
+                model_name=f"{app_label}.{model_name}",
+                object_id=str(instance.pk),
+                user=request.user if request.user.is_authenticated else None,
+                object_data=validated_data
+            )
             
             # Prepare response data
             response_data = {}

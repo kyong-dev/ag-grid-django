@@ -711,6 +711,14 @@ class AgGridFormForeignKeyOptionsAPIView(APIView):
     @swagger_auto_schema(
         operation_description=_("Get options for foreign key fields in a model"),
         operation_summary=_("Get Foreign Key Options"),
+        manual_parameters=[
+            openapi.Parameter(
+                "search",
+                openapi.IN_QUERY,
+                description=_("Search query to filter options"),
+                type=openapi.TYPE_STRING,
+            ),
+        ],
         responses={
             200: openapi.Response(
                 description="Foreign key options",
@@ -776,7 +784,18 @@ class AgGridFormForeignKeyOptionsAPIView(APIView):
         except:
             return Response({"error": f"Display field '{display_field}' not found in related model '{related_model.__name__}'"}, status=status.HTTP_400_BAD_REQUEST)
         
-        for obj in related_model.objects.all():
+        search_query = request.query_params.get("search", None)
+        filters = {}
+        
+        queryset = related_model.objects.all()
+
+        if search_query:
+            filters[f"{display_field}__icontains"] = search_query
+            queryset = queryset.filter(**filters)
+            queryset = queryset[:20]
+
+
+        for obj in queryset:
             if hasattr(obj, display_field):
                 # Use the specified display field
                 display_value = getattr(obj, display_field)
@@ -919,7 +938,7 @@ class AgGridFormCreateAPIView(APIView):
             field_type = field_config.get('type', 'text')
             
             try:
-                if field_type == 'select':
+                if field_type == 'select' or field_type == 'raw_id':
                     # Handle foreign key fields
                     django_field = model._meta.get_field(field_name)
                     if django_field.get_internal_type() in ["ForeignKey", "OneToOneField"]:
@@ -932,7 +951,7 @@ class AgGridFormCreateAPIView(APIView):
                             errors[field_name] = f"Invalid {field_config.get('label', field_name)} selection"
                     else:
                         validated_data[field_name] = int(field_value)
-                
+
                 elif field_type == 'text':
                     # Handle text fields with validation
                     validation = field_config.get('validation', {})

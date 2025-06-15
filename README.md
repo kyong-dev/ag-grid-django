@@ -290,7 +290,7 @@ class ProductAG(AgGrid):
             "validation": {"required": "Product name is required", "minLength": {"value": 3, "message": "Name must be at least 3 characters"}},
         },
         "category": {
-            "type": "select",
+            "type": "raw_id",
             "label": "Category",
             "required": True,
             "editable": True,
